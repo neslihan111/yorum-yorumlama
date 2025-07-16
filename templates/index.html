@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Yorum Analizi</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255, 0, 0, 0.1), rgba(255, 0, 0, 0.05));
+            backdrop-filter: blur(10px);
+            z-index: -1;
+        }
+        .navbar {
+            background-color: #ff0000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1000;
+        }
+        .navbar-brand {
+            color: white !important;
+            font-weight: bold;
+        }
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.1);
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .comment-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.05);
+            cursor: pointer;
+        }
+        .comment-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .comment-card.positive {
+            border-left-color: #28a745;
+        }
+        .comment-card.negative {
+            border-left-color: #dc3545;
+        }
+        .comment-card.neutral {
+            border-left-color: #ffc107;
+        }
+        .comment-author {
+            font-weight: bold;
+            color: #495057;
+            font-size: 1.1rem;
+        }
+        .sentiment-icon {
+            font-size: 1.2rem;
+            margin: 0 4px;
+        }
+        .comment-text {
+            color: #212529;
+            font-size: 1rem;
+            line-height: 1.5;
+            margin: 10px 0;
+        }
+        .comment-date {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .comment-likes {
+            background-color: #f8f9fa;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .comment-likes i {
+            color: #ff0000;
+        }
+        .classification-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .classification-badge.humor {
+            background-color: #e83e8c;
+            color: white;
+        }
+        .classification-badge.question {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .classification-badge.criticism {
+            background-color: #6f42c1;
+            color: white;
+        }
+        .classification-badge.suggestion {
+            background-color: #20c997;
+            color: white;
+        }
+        .stats-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+        }
+        .stats-item {
+            text-align: center;
+            padding: 15px;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stats-label {
+            color: #6c757d;
+            font-size: 1rem;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+        }
+        #errorMessage {
+            display: none;
+            margin: 10px 0;
+        }
+        .url-input {
+            border: 2px solid #ff0000 !important;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1.1rem;
+        }
+        .url-input:focus {
+            box-shadow: 0 0 0 0.25rem rgba(255, 0, 0, 0.25);
+        }
+        .analyze-btn {
+            border-radius: 8px;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            background-color: #ff0000;
+            border: none;
+        }
+        .analyze-btn:hover {
+            background-color: #cc0000;
+        }
+        .video-title {
+            color: #212529;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .filter-buttons {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+        }
+        .filter-btn {
+            padding: 8px 20px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(255, 0, 0, 0.2);
+        }
+        .filter-btn.active {
+            background-color: #ff0000;
+            border-color: #ff0000;
+            color: white;
+        }
+        .gap-2 {
+            gap: 0.5rem !important;
+        }
+        /* İletişim Formu Stilleri */
+        .contact-section {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 50px 0;
+            margin-top: 50px;
+            border-top: 1px solid rgba(255, 0, 0, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.1);
+        }
+        .contact-form {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+        }
+        .contact-info {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .contact-info i {
+            color: #ff0000;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #495057;
+        }
+        .form-control:focus {
+            border-color: #ff0000;
+            box-shadow: 0 0 0 0.25rem rgba(255, 0, 0, 0.25);
+        }
+        /* Video ve Yorum Düzeni */
+        .content-wrapper {
+            position: relative;
+            margin-top: 20px;
+        }
+        .left-section {
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        .left-section.sticky {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 35%;
+            z-index: 100;
+        }
+        .comments-section {
+            width: 100%;
+            transition: margin-left 0.3s ease;
+        }
+        .comments-section.with-sticky-video {
+            margin-left: calc(35% + 40px);
+            width: calc(65% - 40px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div id="customCursor"></div>
+    
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fab fa-youtube me-2"></i>
+                YouTube Yorum Analizi
+            </a>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <!-- URL Input Form -->
+        <div class="row justify-content-center mb-4">
+            <div class="col-md-8">
+                <form id="urlForm" class="d-flex gap-2">
+                    <input type="text" class="form-control url-input" id="url" 
+                           placeholder="YouTube video URL'sini yapıştırın" required>
+                    <input type="text" class="form-control url-input" id="keyword" 
+                           placeholder="Anahtar kelime (opsiyonel)" style="max-width: 200px;">
+                    <select class="form-select url-input" id="commentCount" style="max-width: 150px;">
+                        <option value="10">10 Yorum</option>
+                        <option value="25" selected>25 Yorum</option>
+                        <option value="50">50 Yorum</option>
+                        <option value="100">100 Yorum</option>
+                        <option value="0">Tüm Yorumlar</option>
+                    </select>
+                    <button type="submit" class="btn btn-danger analyze-btn">
+                        <i class="fas fa-chart-bar me-2"></i>Analiz Et
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="alert alert-danger" role="alert"></div>
+
+        <!-- Loading Spinner -->
+        <div class="loading">
+            <div class="spinner-border text-danger loading-spinner" role="status">
+                <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+            <p class="mt-2">Yorumlar analiz ediliyor...</p>
+        </div>
+
+        <!-- Video Container -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div id="videoContainer" style="display: none;">
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-body text-center bg-light">
+                            <h5 id="videoTitle" class="card-title text-dark mb-0"></h5>
+                        </div>
+                    </div>
+                    <div class="video-container">
+                        <iframe src="" frameborder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats and Filters -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div id="statsContainer" style="display: none;">
+                    <div class="stats-card">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="stats-item">
+                                    <div class="stats-number text-success" id="positiveCount">0</div>
+                                    <div class="stats-label">Pozitif Yorum</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stats-item">
+                                    <div class="stats-number text-warning" id="neutralCount">0</div>
+                                    <div class="stats-label">Nötr Yorum</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stats-item">
+                                    <div class="stats-number text-danger" id="negativeCount">0</div>
+                                    <div class="stats-label">Negatif Yorum</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+               
+                <!-- Kategori Butonları -->
+                <div id="filterContainer" class="mt-3" style="display: none;">
+                    <div class="filter-buttons text-center">
+                        <button class="btn btn-outline-danger filter-btn active" data-filter="all">Tümü</button>
+                        <button class="btn btn-outline-success filter-btn" data-filter="positive">Pozitif</button>
+                        <button class="btn btn-outline-warning filter-btn" data-filter="neutral">Nötr</button>
+                        <button class="btn btn-outline-danger filter-btn" data-filter="negative">Negatif</button>
+                        <button class="btn btn-outline-info filter-btn" data-filter="humor">Mizah</button>
+                        <button class="btn btn-outline-primary filter-btn" data-filter="question">Soru</button>
+                        <button class="btn btn-outline-secondary filter-btn" data-filter="criticism">Eleştiri</button>
+                        <button class="btn btn-outline-success filter-btn" data-filter="suggestion">Öneri</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yorumlar -->
+        <div id="commentsContainer" class="row" style="display: none;">
+            <div class="col-12">
+                <h3 class="mb-4">Yorumlar</h3>
+                <div id="commentsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İletişim Bölümü -->
+    <section class="contact-section">
+        <div class="container">
+            <div class="contact-info">
+                <i class="fas fa-envelope"></i>
+                <h3>İletişim</h3>
+                <p>yorumtube23@gmail.com</p>
+            </div>
+            <div class="contact-form">
+                <h4 class="text-center mb-4">Bize Ulaşın</h4>
+                <form id="contactForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Ad-Soyad</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">E-posta</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Telefon (İsteğe bağlı)</label>
+                        <input type="tel" class="form-control" id="phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Mesajınız</label>
+                        <textarea class="form-control" id="message" rows="5" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger w-100">Gönder</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom Cursor Script -->
+    <script>
+        const cursor = document.getElementById('customCursor');
+        
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.top = `${e.clientY}px`;
+            cursor.style.left = `${e.clientX}px`;
+        });
+        
+        document.addEventListener('mousedown', () => {
+            cursor.style.width = '30px';
+            cursor.style.height = '30px';
+            cursor.style.backgroundColor = '#ff000020'; // Hafif kırmızı iç dolgu
+        });
+        
+        document.addEventListener('mouseup', () => {
+            cursor.style.width = '20px';
+            cursor.style.height = '20px';
+            cursor.style.backgroundColor = 'transparent';
+        });
+        
+        // Add hover effect for clickable elements
+        document.querySelectorAll('a, button, input, select').forEach(element => {
+            element.addEventListener('mouseenter', () => {
+                cursor.style.width = '25px';
+                cursor.style.height = '25px';
+            });
+            
+            element.addEventListener('mouseleave', () => {
+                cursor.style.width = '20px';
+                cursor.style.height = '20px';
+            });
+        });
+    </script>
+    
+    <script>
+        // Scroll olayını dinle
+        window.addEventListener('scroll', function() {
+            const leftSection = document.querySelector('.left-section');
+            const commentsSection = document.querySelector('.comments-section');
+            const videoContainer = document.querySelector('.video-container');
+            
+            if (leftSection && videoContainer) {
+                const videoRect = videoContainer.getBoundingClientRect();
+                const scrollPosition = window.scrollY;
+                const videoHeight = videoContainer.offsetHeight;
+                
+                if (scrollPosition > videoHeight) {
+                    leftSection.classList.add('sticky');
+                    commentsSection.classList.add('with-sticky-video');
+                } else {
+                    leftSection.classList.remove('sticky');
+                    commentsSection.classList.remove('with-sticky-video');
+                }
+            }
+        });
+
+        document.getElementById('urlForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const url = document.getElementById('url').value;
+            const commentCount = document.getElementById('commentCount').value;
+            const keyword = document.getElementById('keyword').value;  // Get keyword value
+            const loading = document.querySelector('.loading');
+            const errorMessage = document.getElementById('errorMessage');
+            const videoContainer = document.getElementById('videoContainer');
+            const statsContainer = document.getElementById('statsContainer');
+            const filterContainer = document.getElementById('filterContainer');
+            const commentsContainer = document.getElementById('commentsContainer');
+            
+            // Reset display
+            errorMessage.style.display = 'none';
+            videoContainer.style.display = 'none';
+            statsContainer.style.display = 'none';
+            filterContainer.style.display = 'none';
+            commentsContainer.style.display = 'none';
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `url=${encodeURIComponent(url)}&comment_count=${commentCount}&keyword=${encodeURIComponent(keyword)}`
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Update video
+                const videoId = data.video_id;
+                const videoTitle = data.video_title;
+                document.getElementById('videoTitle').textContent = videoTitle;
+                document.querySelector('.video-container iframe').src = `https://www.youtube.com/embed/${videoId}`;
+                videoContainer.style.display = 'block';
+                
+                // Update stats
+                document.getElementById('positiveCount').textContent = data.stats.positive;
+                document.getElementById('neutralCount').textContent = data.stats.neutral;
+                document.getElementById('negativeCount').textContent = data.stats.negative;
+                statsContainer.style.display = 'block';
+                
+                // Show filter buttons
+                filterContainer.style.display = 'block';
+                
+                // Update comments
+                const commentsList = document.getElementById('commentsList');
+                commentsList.innerHTML = '';
+                
+                data.comments.forEach(comment => {
+                    const sentimentIcon = comment.sentiment === 'positive' ? '😊' :
+                                        comment.sentiment === 'negative' ? '😞' : '😐';
+                    
+                    const commentElement = document.createElement('div');
+                    commentElement.className = `comment-card ${comment.sentiment} p-3 mb-3`;
+                    commentElement.dataset.sentiment = comment.sentiment;
+                    
+                    // Yorum sınıflandırması
+                    let classifications = [];
+                    const text = comment.text.toLowerCase();
+                    
+                    // Mizah kontrolü
+                    if (text.includes('😂') || text.includes('😄') || text.includes('haha') || 
+                        text.includes('lol') || text.includes('güldüm') || text.includes('komik')) {
+                        classifications.push('humor');
+                    }
+                    
+                    // Soru kontrolü
+                    if (text.includes('?') || text.includes('nasıl') || text.includes('nerede') || 
+                        text.includes('ne zaman') || text.includes('kim') || text.includes('neden')) {
+                        classifications.push('question');
+                    }
+                    
+                    // Eleştiri kontrolü
+                    if (text.includes('kötü') || text.includes('berbat') || text.includes('rezil') || 
+                        text.includes('yapmış') || text.includes('olmuş') || text.includes('etmiş')) {
+                        classifications.push('criticism');
+                    }
+                    
+                    // Öneri kontrolü
+                    if (text.includes('öneri') || text.includes('tavsiye') || text.includes('bence') || 
+                        text.includes('şöyle') || text.includes('böyle') || text.includes('yapabilirsin')) {
+                        classifications.push('suggestion');
+                    }
+                    
+                    commentElement.dataset.classifications = classifications.join(' ');
+                    
+                    // Sınıflandırma rozetleri
+                    const classificationBadges = classifications.map(cls => 
+                        `<span class="classification-badge ${cls}">${
+                            cls === 'humor' ? '😄 Mizah' :
+                            cls === 'question' ? '❓ Soru' :
+                            cls === 'criticism' ? '💭 Eleştiri' :
+                            '💡 Öneri'
+                        }</span>`
+                    ).join('');
+                    
+                    commentElement.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center flex-wrap gap-2">
+                                <span class="comment-author">${comment.author}</span>
+                                <span class="sentiment-icon">${sentimentIcon}</span>
+                                ${classificationBadges}
+                            </div>
+                            <div class="comment-likes">
+                                <i class="fas fa-heart"></i> ${comment.likes}
+                            </div>
+                        </div>
+                        <div class="comment-text mb-2">${comment.text}</div>
+                        <div class="comment-date">
+                            <i class="far fa-clock me-1"></i>${new Date(comment.published_at).toLocaleDateString('tr-TR')}
+                        </div>
+                    `;
+                    commentsList.appendChild(commentElement);
+                });
+                
+                commentsContainer.style.display = 'block';
+                
+            } catch (error) {
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        // Filter buttons functionality
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Update active button
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                const filter = this.dataset.filter;
+                const comments = document.querySelectorAll('.comment-card');
+                
+                comments.forEach(comment => {
+                    if (filter === 'all' || 
+                        comment.dataset.sentiment === filter || 
+                        comment.dataset.classifications.includes(filter)) {
+                        comment.style.display = 'block';
+                    } else {
+                        comment.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // İletişim formu gönderimi
+        document.getElementById('contactForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                message: document.getElementById('message').value
+            };
+            
+            try {
+                const response = await fetch('/contact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Server did not return JSON');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Mesajınız başarıyla gönderildi!');
+                    this.reset();
+                } else {
+                    throw new Error(data.error || 'Bir hata oluştu');
+                }
+            } catch (error) {
+                console.error('Form submission error:', error);
+                alert('Mesaj gönderilirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+            }
+        });
+    </script>
+</body>
+</html>
